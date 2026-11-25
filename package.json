@@ -1,0 +1,9 @@
+{
+  "name": "infoboard-build",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "marked": "18.2.1",
+    "dompurify": "3.5.0"
+  }
+}

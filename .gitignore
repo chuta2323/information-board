@@ -1,0 +1,12 @@
+.vs/
+**/bin/
+**/obj/
+.packages/
+node_modules/
+dist/
+**/App_Data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.user

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InfoBoard</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="lib/marked.umd.js"></script>
+  <script defer src="lib/purify.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header>
+    <div class="toolbar">
+      <h1>InfoBoard</h1>
+      <input id="search" type="search" placeholder="キーワード検索" aria-label="キーワード検索" autocomplete="off">
+      <div class="actions">
+        <button id="sort">並べ替え</button><button id="sortCancel" hidden>キャンセル</button>
+        <button id="archive">アーカイブ</button><a class="button" href="api/board/export" download>CSV出力</a>
+        <button id="add" class="primary">＋ 追加</button>
+      </div>
+    </div>
+    <div id="status" role="status" aria-live="polite">読み込み中…</div>
+  </header>
+  <main><h2 id="heading" class="sr-only">カード一覧</h2><p id="empty" hidden></p><section id="board" aria-labelledby="heading"></section></main>
+  <dialog id="editor" aria-labelledby="editorTitle">
+    <form id="editForm">
+      <div class="dialog-head"><h2 id="editorTitle">カード編集</h2><span id="leaseStatus" role="status"></span></div>
+      <div class="fields"><label>タイトル<input id="title" required maxlength="200"></label><label>オーナー<input id="owner" maxlength="100"></label></div>
+      <fieldset><legend>背景色</legend><div id="palette"></div></fieldset>
+      <div class="tabs" role="group" aria-label="本文の表示"><button type="button" id="editTab" aria-pressed="true">編集</button><button type="button" id="previewTab" aria-pressed="false">プレビュー</button></div>
+      <div id="panes" class="panes" data-tab="edit">
+        <label class="edit-pane">Markdown<textarea id="body" maxlength="100000" spellcheck="false" placeholder="## 見出し&#10;- 箇条書き"></textarea></label>
+        <section class="preview-pane"><span>プレビュー</span><div id="preview" class="markdown preview"></div></section>
+      </div>
+      <p id="editError" role="alert" hidden></p>
+      <div class="dialog-foot"><span>反映するまで保存内容は変わりません。</span><button type="button" id="cancel">キャンセル</button><button type="submit" id="save" class="primary">反映</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
