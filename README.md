@@ -2,6 +2,8 @@
 
 既存のIIS上で動作する単ページ型の情報共有ボード。サーバー側のアクセス制御を利用し、Webアプリ独自のログイン機能は持たない。
 
+ヘッダーの鉛筆ボタンで全利用者共通のサイト名を変更できる（初期値InfoBoard）。
+
 ## ビルド・配備
 
 1. GitHub Actionsの **Build InfoBoard IIS package** を実行する（mainへのpushでも起動）。

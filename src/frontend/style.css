@@ -8,3 +8,5 @@
 .preview[data-color=gray]{background:var(--gray)}.preview[data-color=red]{background:var(--red)}.preview[data-color=orange]{background:var(--orange)}.preview[data-color=yellow]{background:var(--yellow)}.preview[data-color=green]{background:var(--green)}.preview[data-color=blue]{background:var(--blue)}.preview[data-color=purple]{background:var(--purple)}
 
 .menu-items .danger{color:var(--warn)}
+
+.site-title{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%}.site-title h1{overflow-wrap:anywhere;min-width:0}.site-title button{flex:none;padding:3px 8px}.site-title #siteName{width:auto}@media(max-width:700px){.site-title{width:100%}}

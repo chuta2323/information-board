@@ -37,6 +37,8 @@ namespace InfoBoard {
     public List<Card> Cards { get; set; }
     public long OrderVersion { get; set; }
     public bool Sorting { get; set; }
+    public string SiteName { get; set; }
+    public long SiteNameVersion { get; set; }
   }
 
   /** @brief 変更APIへの入力。 */
@@ -47,6 +49,7 @@ namespace InfoBoard {
     public long Version { get; set; }
     public Content Content { get; set; }
     public string[] Order { get; set; }
+    public string SiteName { get; set; }
   }
 
   /** @brief 利用者に通知できる業務エラー。 */
@@ -80,7 +83,9 @@ namespace InfoBoard {
         Execute(db, @"CREATE TABLE IF NOT EXISTS cards(id TEXT PRIMARY KEY,title TEXT NOT NULL,owner TEXT NOT NULL,body TEXT NOT NULL,color TEXT NOT NULL,position INTEGER NOT NULL,archived INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,previous TEXT);
 CREATE TABLE IF NOT EXISTS leases(resource TEXT PRIMARY KEY,token TEXT NOT NULL,expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS metadata(id INTEGER PRIMARY KEY CHECK(id=1),order_version INTEGER NOT NULL);
-INSERT OR IGNORE INTO metadata(id,order_version) VALUES(1,0);");
+INSERT OR IGNORE INTO metadata(id,order_version) VALUES(1,0);
+CREATE TABLE IF NOT EXISTS site_settings(id INTEGER PRIMARY KEY CHECK(id=1),name TEXT NOT NULL,version INTEGER NOT NULL);
+INSERT OR IGNORE INTO site_settings(id,name,version) VALUES(1,'InfoBoard',0);");
         return 0;
       });
     }
@@ -278,7 +283,15 @@ INSERT OR IGNORE INTO metadata(id,order_version) VALUES(1,0);");
         while (row.Read()) { active.Add(row.GetString(0)); }
       }
       foreach (var card in cards) { card.Editing = active.Contains(card.Id); }
-      return new Snapshot { Cards = cards, OrderVersion = OrderVersion(db), Sorting = active.Contains(ORDER_KEY) };
+      string siteName;
+      long siteNameVersion;
+      using (var command = Sql(db, "SELECT name,version FROM site_settings WHERE id=1"))
+      using (var row = command.ExecuteReader()) {
+        if (!row.Read()) throw new InvalidOperationException("Site settings are missing.");
+        siteName = row.GetString(0);
+        siteNameVersion = row.GetInt64(1);
+      }
+      return new Snapshot { Cards = cards, OrderVersion = OrderVersion(db), Sorting = active.Contains(ORDER_KEY), SiteName = siteName, SiteNameVersion = siteNameVersion };
     });
 
     /** @brief 変更要求を検証し原子的に実行する。
@@ -292,6 +305,15 @@ INSERT OR IGNORE INTO metadata(id,order_version) VALUES(1,0);");
         Execute(db, "DELETE FROM leases WHERE expires<=@now", "@now", now);
         string key = request.Id;
         switch (request.Action) {
+          case "renameSite":
+            string name = request.SiteName?.Trim();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 100 || name.Any(char.IsControl)) {
+              throw new BoardError(400, "サイト名は1〜100文字で入力してください。改行や制御文字は使用できません。");
+            }
+            if (Execute(db, "UPDATE site_settings SET name=@name,version=version+1 WHERE id=1 AND version=@version", "@name", name, "@version", request.Version) != 1) {
+              throw new BoardError(409, "他の利用者がサイト名を変更しました。最新の名前を確認してください。");
+            }
+            break;
           case "sortAcquire":
             return new { token = Acquire(db, ORDER_KEY, now), version = OrderVersion(db), order = ActiveOrder(db) };
           case "sortHeartbeat":

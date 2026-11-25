@@ -105,6 +105,22 @@ internal static class Program {
       Check(first.Read().Cards.All(c => c.Id != id), "permanent deletion");
       Check(!Encoding.UTF8.GetString(first.Export()).Contains(id), "deleted card excluded from CSV");
       Check(first.Read().Cards.Single().Body == initial.Body, "remaining content unchanged");
+      var settings = first.Read();
+      Check(settings.SiteName == "InfoBoard" && settings.SiteNameVersion == 0, "default site name");
+      first.Apply(new Request { Action = "renameSite", SiteName = "  共有掲示板  ", Version = settings.SiteNameVersion });
+      var named = second.Read();
+      Check(named.SiteName == "共有掲示板" && named.SiteNameVersion == 1, "shared site name");
+      Conflict(() => second.Apply(new Request { Action = "renameSite", SiteName = "古い変更", Version = settings.SiteNameVersion }));
+      foreach (string invalid in new[] { "", "   ", new string('a', 101), "a\nb" }) {
+        bool rejected = false;
+        try { first.Apply(new Request { Action = "renameSite", SiteName = invalid, Version = named.SiteNameVersion }); }
+        catch (BoardError error) { rejected = error.Status == 400; }
+        Check(rejected, "invalid site name");
+      }
+      var renamedStore = new BoardStore(path, () => now);
+      Check(renamedStore.Read().SiteName == "共有掲示板", "site name persistence");
+      renamedStore.Apply(new Request { Action = "renameSite", SiteName = "InfoBoard", Version = named.SiteNameVersion });
+      Check(first.Read().SiteName == "InfoBoard" && first.Read().Cards.Single().Body == initial.Body, "reset name without changing cards");
       Console.WriteLine("InfoBoard SQLite smoke tests passed.");
       return 0;
     } finally {

@@ -7,8 +7,8 @@ const HEARTBEAT_MS = 10000;
 const CARD_WIDTH = 360;
 const GAP = 16;
 const COLORS = {default: '標準', gray: 'グレー', red: 'レッド', orange: 'オレンジ', yellow: 'イエロー', green: 'グリーン', blue: 'ブルー', purple: 'パープル'};
-const ui = Object.fromEntries(['search', 'sort', 'sortCancel', 'archive', 'add', 'status', 'board', 'empty', 'heading', 'editor', 'editForm', 'editorTitle', 'leaseStatus', 'title', 'owner', 'body', 'palette', 'editTab', 'previewTab', 'panes', 'preview', 'editError', 'cancel', 'save'].map(id => [id, document.getElementById(id)]));
-let snapshot = {cards: [], orderVersion: 0, sorting: false};
+const ui = Object.fromEntries(['siteName', 'renameSite', 'search', 'sort', 'sortCancel', 'archive', 'add', 'status', 'board', 'empty', 'heading', 'editor', 'editForm', 'editorTitle', 'leaseStatus', 'title', 'owner', 'body', 'palette', 'editTab', 'previewTab', 'panes', 'preview', 'editError', 'cancel', 'save'].map(id => [id, document.getElementById(id)]));
+let snapshot = {cards: [], orderVersion: 0, sorting: false, siteName: 'InfoBoard', siteNameVersion: 0};
 let archived = false;
 let sorting = null;
 let edit = null;
@@ -288,6 +288,10 @@ function makeCard(card, index, length) {
 function render(force = false) {
   const cards = visibleCards();
   const next = JSON.stringify([cards, archived, online, busy, snapshot.sorting, sorting?.order, sorting?.lost]);
+  const name = snapshot.siteName || 'InfoBoard';
+  ui.siteName.textContent = name;
+  document.title = name;
+  ui.renameSite.disabled = !online || busy || !!sorting || !!edit;
   ui.sort.textContent = sorting ? '完了' : '並べ替え';
   ui.sort.disabled = !online || busy || (sorting ? sorting.lost : archived || !!ui.search.value.trim() || snapshot.sorting || cards.length < 2);
   ui.sortCancel.hidden = !sorting;
@@ -346,6 +350,22 @@ async function mutate(data) {
     render();
     if (failure) { status(failure, true); }
   }
+}
+
+/** @brief 共有サイト名を変更する。キャンセル時は更新しない。 */
+async function renameSite() {
+  if (!online || busy || sorting || edit) return;
+  const current = snapshot.siteName || 'InfoBoard';
+  const version = snapshot.siteNameVersion;
+  const input = window.prompt('サイト名を入力してください（全利用者に反映されます）。', current);
+  if (input === null) return;
+  const name = input.trim();
+  if (!name || name.length > 100 || /[\u0000-\u001f\u007f-\u009f]/.test(name)) {
+    status('サイト名は1〜100文字で入力してください。改行や制御文字は使用できません。', true);
+    return;
+  }
+  if (name === current) return;
+  await mutate({action: 'renameSite', siteName: name, version});
 }
 
 /** @brief 現在の入力内容を取得する。
@@ -559,6 +579,7 @@ function start() {
   }
   ui.palette.setAttribute('role', 'radiogroup');
   ui.palette.setAttribute('aria-label', '背景色');
+  ui.renameSite.addEventListener('click', renameSite);
   ui.add.addEventListener('click', () => openEditor());
   ui.archive.addEventListener('click', () => { archived = !archived; render(true); void poll(); });
   ui.search.addEventListener('input', () => render());

@@ -1,4 +1,4 @@
-# InfoBoard v1.1 仕様・詳細設計
+# InfoBoard v1.2 仕様・詳細設計
 
 ## 前提
 
@@ -11,6 +11,7 @@
 
 - Masonry単ページ。基準幅360px、16px間隔、均一幅・可変高さ、最短列へ順序どおり配置。画面幅が変わると位置は再配置される。
 - タイトル、オーナー、プレーンテキスト本文、8色の背景色。本文240px超は折りたたみ。展開状態はページ内で保持。
+- サイト名は初期値InfoBoard。ヘッダーの鉛筆ボタンから1〜100文字の名前に変更できる。全利用者共通で、ヘッダーとブラウザーのタブ名に反映する。既存のアクセス制御上、全利用者が変更可能。競合時は古い変更を拒否する。IISのURL・CSVファイル名・アプリケーション名は変えない。
 - OS設定に追従するライト／ダーク。手動テーマなし。
 - モーダルで追加・編集。左右同幅の本文入力とリアルタイムプレビュー。狭い画面はタブ切り替え。反映のみ保存、未保存キャンセル時は確認。
 - 本文はプレーンテキスト。改行と空白を維持し、HTML・Markdownとして解釈しない。XSS対策としてテキストノードで描画する。既存本文は変換せず原文のまま表示する。
@@ -23,14 +24,15 @@
 
 ## データ
 
-`App_Data/board.db` に `cards`（本体・状態・順序・更新版・直前内容JSON）、`leases`（対象キー・ランダムトークン・期限）、`metadata`（順序版）を保持。未保存の入力内容はクライアント側のみ。SQLはパラメーター化し、変更はBEGIN IMMEDIATEからCOMMITまで原子的に実行。GETは読み取りトランザクションでスナップショットを取得する。
+`App_Data/board.db` に `cards`（本体・状態・順序・更新版・直前内容JSON）、`leases`（対象キー・ランダムトークン・期限）、`metadata`（順序版）、`site_settings`（サイト名と版、既存DBへの起動時の追加は既存カードを変更しない）を保持。未保存の入力内容はクライアント側のみ。SQLはパラメーター化し、変更はBEGIN IMMEDIATEからCOMMITまで原子的に実行。GETは読み取りトランザクションでスナップショットを取得する。
 
 ## API
 
-`GET api/board`：全カードと編集・並べ替え状態。`POST api/board`：JSONの `action`、必要に応じ `id/token/version/content/order`。変更には `X-InfoBoard: 1` とapplication/jsonが必要、Originがあれば同一オリジンを検査。`GET api/board/export`：全件CSV。いずれも同一IISアクセス制御下。
+`GET api/board`：全カードと編集・並べ替え状態、サイト名・サイト名版。`POST api/board`：JSONの `action`、必要に応じ `id/token/version/content/order`。変更には `X-InfoBoard: 1` とapplication/jsonが必要、Originがあれば同一オリジンを検査。`GET api/board/export`：全件CSV。いずれも同一IISアクセス制御下。
 
 - create/acquire/heartbeat/release/save/archive/unarchive/delete/restore
 - sortAcquire/sortHeartbeat/sortRelease/sortSave
+- renameSite：`siteName` と `version` を指定。サイト名の前後空白を除去し、空文字・100文字超・制御文字を拒否。サイト名の版が一致する場合のみ更新。
 - acquireは推測困難なトークンと最新カードを返す。リース60秒・10秒延長。一覧は5秒周期、並べ替え中は同期停止。トークンは一覧・CSVに含めない。
 - 保存には有効トークン・カード版が必要。ロック喪失時は上書き禁止、未保存入力をダイアログに保持。キャンセル・離脱時に解放を試み、異常時は期限で解除。端末のスリープやバックグラウンド制限でも失効し得る。
 - 一覧構造変更（追加・アーカイブ・復帰・完全削除）は並べ替え中拒否。順序更新には全IDと順序版を検証。内容変更は別カードで同時実行可能。HTTP 409は競合。
