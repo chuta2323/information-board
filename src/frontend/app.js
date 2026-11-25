@@ -86,17 +86,12 @@ function status(message, error = false) {
   ui.status.classList.toggle('error', error);
 }
 
-/** @brief Markdownを安全なHTMLへ変換する。
+/** @brief 本文を装飾せず安全なテキストとして表示する。
  * @param [in] node 描画先
- * @param [in] source Markdown原文
+ * @param [in] source 保存された本文
  */
-function markdown(node, source) {
-  const parsed = window.marked.parse(source, {gfm: true, breaks: false});
-  node.innerHTML = window.DOMPurify.sanitize(parsed, {USE_PROFILES: {html: true}, FORBID_TAGS: ['style', 'img', 'form', 'input', 'button', 'iframe', 'video', 'audio', 'source'], FORBID_ATTR: ['style', 'class', 'id', 'name', 'target', 'src', 'srcset'], ALLOW_DATA_ATTR: false});
-  for (const link of node.querySelectorAll('a[href]')) {
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-  }
+function showText(node, source) {
+  node.textContent = source;
 }
 
 /** @brief 表示用日時を日本時間へ変換する。
@@ -150,15 +145,30 @@ function scheduleLayout() {
   if (!layoutFrame) { layoutFrame = requestAnimationFrame(layout); }
 }
 
-/** @brief 並べ替え中のドラッグ位置を変更する。
+/** @brief 移動先の元の順番にカードを移す。
+ * @param [in] order 現在のカードID順
  * @param [in] id 移動対象
  * @param [in] target 移動先のカード
- * @param [in] after 移動先の後ろに挿入するか
+ * @return 移動後の順番。無効な操作の場合は元の配列
  */
-function move(id, target, after) {
-  if (!sorting || sorting.lost || id === target || !sorting.order.includes(id) || !sorting.order.includes(target)) return;
-  const order = sorting.order.filter(item => item !== id);
-  order.splice(order.indexOf(target) + (after ? 1 : 0), 0, id);
+function reorderedCards(order, id, target) {
+  const from = order.indexOf(id);
+  const to = order.indexOf(target);
+  if (from < 0 || to < 0 || from === to) return order;
+  const next = [...order];
+  next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+
+/** @brief 並べ替え中のカードを移動する。
+ * @param [in] id 移動対象
+ * @param [in] target 移動先のカード
+ */
+function move(id, target) {
+  if (!sorting || sorting.lost) return;
+  const order = reorderedCards(sorting.order, id, target);
+  if (order === sorting.order) return;
   sorting.order = order;
   render(true);
 }
@@ -205,18 +215,22 @@ function makeCard(card, index, length) {
     article.addEventListener('dragover', event => {
       if (!dragId || dragId === card.id) return;
       event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
       article.classList.add('drop');
     });
     article.addEventListener('dragleave', () => article.classList.remove('drop'));
     article.addEventListener('drop', event => {
       event.preventDefault();
-      const rect = article.getBoundingClientRect();
-      move(dragId, card.id, event.clientY > rect.top + rect.height / 2);
+      const id = dragId;
       dragId = null;
+      for (const node of ui.board.children) {
+        node.classList.remove('drop', 'dragging');
+      }
+      move(id, card.id);
     });
-    const up = button('↑', () => move(card.id, sorting.order[index - 1], false), index === 0 || sorting.lost);
+    const up = button('↑', () => move(card.id, sorting.order[index - 1]), index === 0 || sorting.lost);
     up.setAttribute('aria-label', '前へ移動');
-    const down = button('↓', () => move(card.id, sorting.order[index + 1], true), index === length - 1 || sorting.lost);
+    const down = button('↓', () => move(card.id, sorting.order[index + 1]), index === length - 1 || sorting.lost);
     down.setAttribute('aria-label', '後ろへ移動');
     tools.append(handle, up, down);
     head.append(tools);
@@ -228,6 +242,9 @@ function makeCard(card, index, length) {
     const locked = card.editing || !online || busy;
     if (card.archived) {
       items.append(button('通常一覧に戻す', () => cardAction(card, 'unarchive', 'このカードを通常一覧へ戻しますか？'), locked || snapshot.sorting));
+      const remove = button('完全削除', () => cardAction(card, 'delete', `「${card.title}」と直前の履歴を完全削除しますか？ この操作は取り消せません。`), locked || snapshot.sorting);
+      remove.classList.add('danger');
+      items.append(remove);
     } else {
       items.append(button('編集', () => openEditor(card), locked));
       items.append(button('直前の状態に戻す', () => cardAction(card, 'restore', '現在と直前の内容を入れ替えますか？'), locked || !card.hasPrevious));
@@ -244,8 +261,8 @@ function makeCard(card, index, length) {
   }
   const owner = element('div', `オーナー：${card.owner || '—'}`, 'owner');
   if (card.editing) { owner.append(element('span', '● 編集中', 'editing-label')); }
-  const body = element('div', '', 'markdown card-body');
-  markdown(body, card.body);
+  const body = element('div', '', 'plain-text card-body');
+  showText(body, card.body);
   body.classList.toggle('collapsed', !expanded.has(card.id));
   const more = button(expanded.has(card.id) ? '折りたたむ ↑' : 'もっと見る ↓', () => {
     if (expanded.has(card.id)) {
@@ -340,7 +357,7 @@ function draft() {
 
 /** @brief 背景色の選択状態とプレビューを更新する。 */
 function refreshPreview() {
-  markdown(ui.preview, ui.body.value);
+  showText(ui.preview, ui.body.value);
   ui.preview.dataset.color = selectedColor;
   for (const swatch of ui.palette.children) { swatch.setAttribute('aria-checked', String(swatch.dataset.color === selectedColor)); }
 }
@@ -530,12 +547,6 @@ function releaseOnExit() {
 
 /** @brief UIのイベントと定期同期を設定する。 */
 function start() {
-  if (!window.marked || !window.DOMPurify || !window.DOMPurify.isSupported) {
-    status('Markdownライブラリが不足しているか、ブラウザーが未対応です。配備パッケージを確認してください。', true);
-    ui.add.disabled = true;
-    ui.sort.disabled = true;
-    return;
-  }
   ui.palette.setAttribute('role', 'group');
   for (const [color, name] of Object.entries(COLORS)) {
     const swatch = button('', () => { selectedColor = color; refreshPreview(); });

@@ -34,20 +34,14 @@ foreach ($target in @($bin, $test)) {
 & (Join-Path $test 'InfoBoard.Smoke.exe')
 if ($LASTEXITCODE -ne 0) { throw 'SQLite smoke tests failed.' }
 
-npm install --ignore-scripts --no-audit --no-fund
-if ($LASTEXITCODE -ne 0) { throw 'npm install failed.' }
 node --check 'src/frontend/app.js'
 if ($LASTEXITCODE -ne 0) { throw 'JavaScript syntax check failed.' }
-$lib = Join-Path $site 'lib'
-New-Item $lib -ItemType Directory -Force | Out-Null
-Copy-Item 'node_modules/marked/lib/marked.umd.js' $lib
-Copy-Item 'node_modules/dompurify/dist/purify.min.js' $lib
-Copy-Item 'node_modules/marked/LICENSE*' (Join-Path $lib 'marked-LICENSE.txt')
-Copy-Item 'node_modules/dompurify/LICENSE*' (Join-Path $lib 'dompurify-LICENSE.txt')
+node --test 'tests/frontend.test.cjs'
+if ($LASTEXITCODE -ne 0) { throw 'Frontend regression tests failed.' }
 # DBは初回起動時に生成する。既存DBは再配備で上書きしない。
 $notes = Join-Path $dist 'deployment.md'
 Copy-Item 'docs/deployment.md' $notes
-$required = @('index.html','web.config','Global.asax','app.js','style.css','bin/InfoBoard.dll','bin/System.Web.Http.dll','bin/System.Web.Http.WebHost.dll','bin/System.Data.SQLite.dll','bin/x64/SQLite.Interop.dll','lib/marked.umd.js','lib/purify.min.js')
+$required = @('index.html','web.config','Global.asax','app.js','style.css','bin/InfoBoard.dll','bin/System.Web.Http.dll','bin/System.Web.Http.WebHost.dll','bin/System.Data.SQLite.dll','bin/x64/SQLite.Interop.dll')
 foreach ($item in $required) {
   if (-not (Test-Path (Join-Path $site $item))) { throw "Missing deployment file: $item" }
 }

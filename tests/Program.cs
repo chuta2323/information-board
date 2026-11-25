@@ -93,6 +93,18 @@ internal static class Program {
       Check(BoardStore.CsvField("a\"b\n,c") == "\"a\"\"b\n,c\"", "CSV quoting");
       restarted.Apply(new Request { Action = "unarchive", Id = id, Version = card.Version });
       Check(!first.Read().Cards.Last().Archived && first.Read().Cards.Last().Id == id, "unarchive at end");
+      card = first.Read().Cards.Single(c => c.Id == id);
+      Conflict(() => first.Apply(new Request { Action = "delete", Id = id, Version = card.Version }));
+      first.Apply(new Request { Action = "archive", Id = id, Version = card.Version });
+      card = first.Read().Cards.Single(c => c.Id == id);
+      Conflict(() => second.Apply(new Request { Action = "delete", Id = id, Version = card.Version - 1 }));
+      sortToken = Token(first.Apply(new Request { Action = "sortAcquire" }));
+      Conflict(() => second.Apply(new Request { Action = "delete", Id = id, Version = card.Version }));
+      first.Apply(new Request { Action = "sortRelease", Token = sortToken });
+      second.Apply(new Request { Action = "delete", Id = id, Version = card.Version });
+      Check(first.Read().Cards.All(c => c.Id != id), "permanent deletion");
+      Check(!Encoding.UTF8.GetString(first.Export()).Contains(id), "deleted card excluded from CSV");
+      Check(first.Read().Cards.Single().Body == initial.Body, "remaining content unchanged");
       Console.WriteLine("InfoBoard SQLite smoke tests passed.");
       return 0;
     } finally {

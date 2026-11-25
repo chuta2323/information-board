@@ -347,6 +347,16 @@ INSERT OR IGNORE INTO metadata(id,order_version) VALUES(1,0);");
             Execute(db, "UPDATE cards SET archived=@archived,position=@position,version=version+1,updated_at=@now WHERE id=@id", "@archived", archive ? 1 : 0, "@position", archive ? target.Position : NextPosition(db), "@now", Timestamp(now), "@id", key);
             BumpOrder(db);
             break;
+          case "delete":
+            RequireUnlocked(db, ORDER_KEY, now);
+            RequireUnlocked(db, key, now);
+            var deleted = GetCard(db, key);
+            RequireVersion(deleted, request.Version);
+            if (!deleted.Archived) throw new BoardError(409, "完全削除はアーカイブ済みカードのみ可能です。");
+            Execute(db, "DELETE FROM cards WHERE id=@id", "@id", key);
+            Execute(db, "DELETE FROM leases WHERE resource=@key", "@key", key);
+            BumpOrder(db);
+            break;
           case "restore":
             RequireUnlocked(db, key, now);
             var latest = GetCard(db, key);

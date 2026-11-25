@@ -15,8 +15,8 @@ Windows開発環境でも .NET SDK 10 / Node.js 24 を使って `pwsh ./build.ps
 
 ## 状態
 
-初期実装のソース。Windows上のビルド、SQLiteのスモークテスト、IIS実機の受入確認を通過してから業務利用すること。業務データ、実在サーバー名、認証情報はリポジトリに登録しない。
+本文はプレーンテキストで保存・表示し、改行と空白を維持する。既存の本文も変換せずに表示する。完全削除はアーカイブ一覧からのみ可能。Windows上のビルド、SQLiteのスモークテスト、IIS実機の受入確認を通過してから業務利用すること。業務データ、実在サーバー名、認証情報はリポジトリに登録しない。
 
 ## 主な依存関係
 
-ASP.NET Web API 2 5.3.0、.NET Framework 4.7.2、System.Data.SQLite.Core 1.0.119、Newtonsoft.Json 13.0.3、Marked 18.2.1、DOMPurify 3.5.0。依存ライブラリはそれぞれのライセンスに従う。更新時は脆弱性と互換性を確認する。
+ASP.NET Web API 2 5.3.0、.NET Framework 4.7.2、System.Data.SQLite.Core 1.0.119、Newtonsoft.Json 13.0.3。依存ライブラリはそれぞれのライセンスに従う。更新時は脆弱性と互換性を確認する。

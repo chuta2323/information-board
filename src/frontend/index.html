@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>InfoBoard</title>
   <link rel="stylesheet" href="style.css">
-  <script defer src="lib/marked.umd.js"></script>
-  <script defer src="lib/purify.min.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
@@ -30,8 +28,8 @@
       <fieldset><legend>背景色</legend><div id="palette"></div></fieldset>
       <div class="tabs" role="group" aria-label="本文の表示"><button type="button" id="editTab" aria-pressed="true">編集</button><button type="button" id="previewTab" aria-pressed="false">プレビュー</button></div>
       <div id="panes" class="panes" data-tab="edit">
-        <label class="edit-pane">Markdown<textarea id="body" maxlength="100000" spellcheck="false" placeholder="## 見出し&#10;- 箇条書き"></textarea></label>
-        <section class="preview-pane"><span>プレビュー</span><div id="preview" class="markdown preview"></div></section>
+        <label class="edit-pane">内容<textarea id="body" maxlength="100000" spellcheck="false" placeholder="内容を入力してください"></textarea></label>
+        <section class="preview-pane"><span>プレビュー</span><div id="preview" class="plain-text preview"></div></section>
       </div>
       <p id="editError" role="alert" hidden></p>
       <div class="dialog-foot"><span>反映するまで保存内容は変わりません。</span><button type="button" id="cancel">キャンセル</button><button type="submit" id="save" class="primary">反映</button></div>
