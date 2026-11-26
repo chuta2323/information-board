@@ -1,0 +1,37 @@
+name: Verify InfoBoard text deployment
+on:
+  push:
+    branches: [main]
+    paths: ['text-deploy/**', 'tests/TextStoreSmoke.cs', 'tests/text-frontend.test.cjs', '.github/workflows/text-deploy.yml']
+  pull_request:
+    paths: ['text-deploy/**', 'tests/TextStoreSmoke.cs', 'tests/text-frontend.test.cjs', '.github/workflows/text-deploy.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check JavaScript
+        run: |
+          node --check text-deploy/app.js
+          node --test tests/text-frontend.test.cjs
+      - name: Compile with .NET Framework compiler and test JSON store
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $framework = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
+          $source = (Get-Content text-deploy/api.ashx -Raw -Encoding UTF8) -replace '^<%@[^%]*%>\r?\n', ''
+          $sourcePath = Join-Path $env:RUNNER_TEMP 'InfoBoardHandler.cs'
+          $exe = Join-Path $env:RUNNER_TEMP 'TextStoreSmoke.exe'
+          Set-Content $sourcePath $source -Encoding utf8BOM
+          & "$framework\csc.exe" /nologo /target:exe "/out:$exe" /reference:System.Web.dll /reference:System.Web.Extensions.dll $sourcePath tests/TextStoreSmoke.cs
+          if ($LASTEXITCODE -ne 0) { throw 'Framework compilation failed' }
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw 'JSON store smoke tests failed' }
+          [xml](Get-Content text-deploy/web.config -Raw) | Out-Null

@@ -4,7 +4,11 @@
 
 ヘッダーの鉛筆ボタンで全利用者共通のサイト名を変更できる（初期値InfoBoard）。
 
-## ビルド・配備
+## テキストだけで配備する場合
+
+会社PCで承認済みのソース配置が可能な環境向けに、[テキスト配備版](text-deploy/README.md)を用意した。外部DLL・配備ZIP・追加インストール不要。既存SQLite版とは別のディレクトリで使用する。
+
+## 従来のSQLite版のビルド・配備
 
 1. GitHub Actionsの **Build InfoBoard IIS package** を実行する（mainへのpushでも起動）。
 2. 成功した実行のArtifactsから `InfoBoard-IIS` をダウンロードし、内部の `InfoBoard-IIS.zip` を展開する。
